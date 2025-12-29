@@ -1,0 +1,13 @@
+cargo-features = ["panic-immediate-abort"]
+
+
+[workspace]
+resolver = "2"
+members = ["launcher", "payload"]
+
+[profile.payload]
+inherits = "release"
+lto = "off"
+codegen-units = 1
+opt-level = "s"
+panic = "immediate-abort"

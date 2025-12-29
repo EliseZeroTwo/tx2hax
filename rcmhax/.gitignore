@@ -1,0 +1,6 @@
+/target
+.DS_Store
+*.bin
+*.map
+result
+auto

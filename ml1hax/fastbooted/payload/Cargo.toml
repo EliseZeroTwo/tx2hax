@@ -1,0 +1,14 @@
+[package]
+name = "payload"
+version = "0.1.0"
+edition = "2024"
+authors = ["Elise Amber Katze <ml1@katze.sh>"]
+
+[features]
+dtbhax = []
+
+[dependencies]
+gpt_disk_io = "0.16.2"
+gpt_disk_types = { version = "0.16.1", features = ["bytemuck"] }
+payload-helpers = { path = "../payload-helpers" }
+tx2-common = { version = "0.1.0", path = "../../tx2-common" }

@@ -1,0 +1,8 @@
+[package]
+name = "rcmhax-payload"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["log-sbk"]
+log-sbk = []

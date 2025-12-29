@@ -1,0 +1,14 @@
+[workspace]
+members = ["payload", "payload-helpers"]
+resolver = "3"
+
+[profile.dev]
+lto = "off"
+codegen-units = 1
+panic = "abort"
+
+[profile.release]
+lto = "off"
+codegen-units = 1
+opt-level = "s"
+panic = "abort"
