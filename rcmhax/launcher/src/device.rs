@@ -177,7 +177,7 @@ impl RcmDevice {
         Ok(uid)
     }
 
-    pub fn write_until(&mut self, target: u32) -> Result<()> {
+    pub(crate) fn write_until(&mut self, target: u32) -> Result<()> {
         self.write_length(target.wrapping_sub(self.current_address()) as usize)
     }
 
@@ -187,7 +187,7 @@ impl RcmDevice {
         Ok(())
     }
 
-    pub fn write_length(&mut self, len: usize) -> Result<()> {
+    pub(crate) fn write_length(&mut self, len: usize) -> Result<()> {
         const BUFFER: &[u8] = &[0u8; 64 * 1024 * 32];
 
         let pb = (len > 1024 * 1024 * 32).then(|| {
@@ -230,7 +230,7 @@ impl RcmDevice {
         Ok(())
     }
 
-    pub fn log_written(&self, what: &str) {
+    pub(crate) fn log_written(&self, what: &str) {
         tracing::debug!(
             "Written {what}! (addr={:#010X}) (written_bytes={:#X})",
             self.current_address(),
@@ -238,7 +238,7 @@ impl RcmDevice {
         );
     }
 
-    pub fn bump_ep0_ring(&self) -> Result<()> {
+    pub(crate) fn bump_ep0_ring(&self) -> Result<()> {
         let mut buf = [0u8; 1];
         self.handle.read_control(
             rusb::request_type(
@@ -255,11 +255,11 @@ impl RcmDevice {
         Ok(())
     }
 
-    pub fn bump_ep1_out_ring(&self) -> anyhow::Result<()> {
+    pub(crate) fn bump_ep1_out_ring(&self) -> anyhow::Result<()> {
         self.write_raw(&[])
     }
 
-    pub fn unstall_ep1_out(&self) -> Result<()> {
+    pub(crate) fn unstall_ep1_out(&self) -> Result<()> {
         self.handle.write_control(
             rusb::request_type(
                 rusb::Direction::Out,
@@ -276,7 +276,7 @@ impl RcmDevice {
         Ok(())
     }
 
-    pub fn do_svc(&self) -> Result<()> {
+    pub(crate) fn do_svc(&self) -> Result<()> {
         let mut buf = [0u8; 0x12];
         self.handle.read_control(
             rusb::request_type(
@@ -294,7 +294,7 @@ impl RcmDevice {
         Ok(())
     }
 
-    pub fn send_link_trb(&mut self, link_addr: u32) -> Result<()> {
+    pub(crate) fn send_link_trb(&mut self, link_addr: u32) -> Result<()> {
         assert_eq!(link_addr & 0xf, 0);
         let mut trb = [0u8; 0x10];
         trb[0..4].copy_from_slice(&link_addr.to_le_bytes());

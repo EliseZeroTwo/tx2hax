@@ -1,14 +1,13 @@
-mod device;
-mod hax;
-
 use std::{
-    io::Read,
+    io::{Read, Write},
     path::{Path, PathBuf},
     process::ExitCode,
 };
 
 use anyhow::{Context, bail};
 use clap::Parser;
+
+const PAYLOAD_MAX_LEN: usize = 0x4005_0000 - rcmhax_launcher::PAYLOAD_LOAD_ADDRESS;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -31,11 +30,11 @@ fn read_payload(path: &Path) -> anyhow::Result<Vec<u8>> {
         .context("fetching payload file metadata")?
         .len();
 
-    if len > hax::PAYLOAD_MAX_LEN as u64 {
+    if len > PAYLOAD_MAX_LEN as u64 {
         bail!(
             "Payload is too large, {len} bytes when maximum is {} ({} bytes too many)",
-            hax::PAYLOAD_MAX_LEN,
-            len - hax::PAYLOAD_MAX_LEN as u64
+            PAYLOAD_MAX_LEN,
+            len - PAYLOAD_MAX_LEN as u64
         );
     }
 
@@ -49,6 +48,28 @@ fn read_payload(path: &Path) -> anyhow::Result<Vec<u8>> {
     }
 
     Ok(buffer)
+}
+
+pub fn post(device: &mut rcmhax_launcher::RcmDevice) -> anyhow::Result<()> {
+    println!("-- USB Logs --");
+
+    let mut buffer = [0u8; 0x10000];
+    loop {
+        let len = match device.read_no_timeout(&mut buffer) {
+            Ok(len) => len,
+            Err(why) => {
+                tracing::warn!("Device exited from logging: {why}");
+                return Ok(());
+            }
+        };
+        for &ch in &buffer[..len] {
+            if ch == b'\n' || ch == b'\r' || (0x20..0x7F).contains(&ch) {
+                std::io::stdout().write_all(&[ch]).unwrap();
+            } else {
+                print!("\\x{ch:02X}");
+            }
+        }
+    }
 }
 
 fn main() -> ExitCode {
@@ -66,92 +87,25 @@ fn main() -> ExitCode {
         }
     };
 
-    let mut devices = match device::get_devices() {
-        Ok(devices) => devices,
-        Err(why) => {
-            eprintln!("{why}");
-            return ExitCode::FAILURE;
-        }
-    };
-
-    if devices.len() > 1 {
-        eprintln!("Too many RCM devices found!");
+    if let Err(why) = rcmhax_launcher::pwn(&payload, args.ep0_offset) {
+        eprintln!("{why}");
         return ExitCode::FAILURE;
     }
-
-    let Some(mut device) = devices.pop() else {
-        eprintln!("No RCM devices found!");
-        return ExitCode::FAILURE;
-    };
-
-    match device.read_uid() {
-        Ok(uid) => {
-            print!("Sending {} byte long payload to device ", payload.len());
-
-            for ch in uid {
-                print!("{ch:02X}");
-            }
-
-            println!();
-        }
-        Err(why) => {
-            eprintln!("{}", why);
-            return ExitCode::FAILURE;
-        }
-    }
-
-    if let Err(why) = hax::hax(&mut device, &payload, args.ep0_offset.map(|x| x as usize)) {
-        eprintln!("{}", why);
-        return ExitCode::FAILURE;
-    }
-
-    println!("The payload should now be running!");
 
     if args.wait {
-        let start = std::time::Instant::now();
-
-        let mut device = loop {
-            let mut devices = match device::get_devices() {
-                Ok(devices) => devices,
-                Err(why) => {
-                    eprintln!("Failed to initialise device: {why}");
-
-                    if start.elapsed() > std::time::Duration::from_secs(60) {
-                        eprintln!("Device not found within 60 seconds");
-                        return ExitCode::FAILURE;
-                    }
-
-                    std::thread::sleep(std::time::Duration::from_millis(250));
-                    continue;
-                }
-            };
-
-            if devices.len() > 1 {
-                eprintln!("Too many RCM devices found!");
-                return ExitCode::FAILURE;
-            }
-
-            let Some(device) = devices.pop() else {
-                if start.elapsed() > std::time::Duration::from_secs(60) {
-                    eprintln!("Device not found within 60 seconds");
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        match rcmhax_launcher::open_post() {
+            Ok(mut device) => {
+                if let Err(why) = post(&mut device) {
+                    eprintln!("{}", why);
                     return ExitCode::FAILURE;
                 }
-                std::thread::sleep(std::time::Duration::from_millis(250));
-                continue;
-            };
-
-            break device;
+            }
+            Err(why) => {
+                eprintln!("{}", why);
+                return ExitCode::FAILURE;
+            }
         };
-
-        println!(
-            "Device alive again after {:.2}s!",
-            start.elapsed().as_secs_f64()
-        );
-
-        if let Err(why) = hax::post(&mut device) {
-            eprintln!("{}", why);
-            return ExitCode::FAILURE;
-        }
     }
 
     ExitCode::SUCCESS

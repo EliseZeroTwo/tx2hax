@@ -1,11 +1,8 @@
-use std::io::Write;
-
 use anyhow::{Context, bail};
 
 use crate::device::RcmDevice;
 
-const PAYLOAD_LOAD_ADDRESS: usize = 0x4002_0000;
-pub(crate) const PAYLOAD_MAX_LEN: usize = 0x4005_0000 - PAYLOAD_LOAD_ADDRESS;
+pub const PAYLOAD_LOAD_ADDRESS: usize = 0x4002_0000;
 
 const fn default_ep0_bump_count() -> usize {
     const {
@@ -142,33 +139,4 @@ pub fn hax(
     }
 
     Ok(())
-}
-
-pub fn post(device: &mut RcmDevice) -> anyhow::Result<()> {
-    let uid = device.read_uid()?;
-    print!("Reconnected to device ");
-    for ch in uid {
-        print!("{ch:02X}");
-    }
-    println!();
-
-    println!("-- USB Logs --");
-
-    let mut buffer = [0u8; 0x10000];
-    loop {
-        let len = match device.read_no_timeout(&mut buffer) {
-            Ok(len) => len,
-            Err(why) => {
-                tracing::warn!("Device exited from logging: {why}");
-                return Ok(());
-            }
-        };
-        for &ch in &buffer[..len] {
-            if ch == b'\n' || ch == b'\r' || (0x20..0x7F).contains(&ch) {
-                std::io::stdout().write_all(&[ch]).unwrap();
-            } else {
-                print!("\\x{ch:02X}");
-            }
-        }
-    }
 }
