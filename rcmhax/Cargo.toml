@@ -3,7 +3,7 @@ cargo-features = ["panic-immediate-abort"]
 
 [workspace]
 resolver = "2"
-members = ["launcher", "payload"]
+members = ["launcher", "payload", "payload-sehax"]
 
 [profile.payload]
 inherits = "release"

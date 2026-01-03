@@ -1,0 +1,28 @@
+{
+    "abi": "eabi",
+    "arch": "arm",
+    "c-enum-min-bits": 8,
+    "crt-objects-fallback": "false",
+    "data-layout": "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64",
+    "emit-debug-gdb-scripts": false,
+    "linker": "rust-lld",
+    "linker-flavor": "ld.lld",
+    "llvm-floatabi": "soft",
+    "llvm-target": "armv7r-none-eabi",
+    "max-atomic-width": 32,
+    "panic-strategy": "immediate-abort",
+    "relocation-model": "static",
+    "target-pointer-width": 32,
+    "target-c-int-width": 32,
+    "no-builtins": true,
+    "os": "none",
+    "position-independent-executables": true,
+    "static-position-independent-executables": true,
+    "pre-link-args": {
+        "ld.lld": [
+            "-Tpayload-sehax/rcm.ld",
+            "-Map=payload-sehax/rcmhax-payload.map"
+        ]
+    },
+    "vendor": "katze"
+}
